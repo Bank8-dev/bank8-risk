@@ -135,7 +135,8 @@ async fn sse_consume_loop(state: Arc<WorkerState>) {
                 let event_type = msg["event_type"].as_str().unwrap_or("").to_string();
                 let payload = msg["payload"].clone();
 
-                match process_measurement_event(&state.state, &env_id, &event_type, &payload).await {
+                match process_measurement_event(&state.state, &env_id, &event_type, &payload).await
+                {
                     Ok(()) => {
                         let _ = state.bus.ack(&family, CONSUMER_GROUP, &message_id).await;
                     }
@@ -145,7 +146,10 @@ async fn sse_consume_loop(state: Arc<WorkerState>) {
                         // the retry delay — None takes the default), then
                         // ACK to move on (the DLQ handles poison
                         // messages).
-                        let _ = state.bus.nack(&family, CONSUMER_GROUP, &message_id, None).await;
+                        let _ = state
+                            .bus
+                            .nack(&family, CONSUMER_GROUP, &message_id, None)
+                            .await;
                         let _ = state.bus.ack(&family, CONSUMER_GROUP, &message_id).await;
                     }
                 }
@@ -178,7 +182,8 @@ async fn process_measurement_event(
     // Dedupe on the event idempotency key — re-delivery never
     // double-counts (§8 invariant; at-least-once stream + idempotent
     // consumer = effectively-once).
-    let idem = payload["idempotency_key"].as_str()
+    let idem = payload["idempotency_key"]
+        .as_str()
         .or_else(|| payload["id"].as_str())
         .unwrap_or_default();
     if idem.is_empty() {
@@ -187,7 +192,11 @@ async fn process_measurement_event(
         return Ok(());
     }
 
-    let mut conn = state.pool.acquire().await.map_err(|e| format!("pool: {e}"))?;
+    let mut conn = state
+        .pool
+        .acquire()
+        .await
+        .map_err(|e| format!("pool: {e}"))?;
     set_tenant_context(&mut conn, env_uuid).await;
 
     tracing::debug!(

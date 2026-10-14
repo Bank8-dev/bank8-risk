@@ -7,24 +7,22 @@
 //! Output via `--print-registration` flag. See `sentin8/design/sentin8-service-self-registration-design.md`.
 
 use sentin8::registration::{
-    AdminScope, AdminUi, AdminUiPage, AuditFinding, ErrorCode, M2mGrant, PgRole, Registration,
-    PolicySetDecl, RelationDecl, ServiceActionEntry, SqlMigration,
+    AdminScope, AdminUi, AdminUiPage, AuditFinding, ErrorCode, M2mGrant, PgRole, PolicySetDecl,
+    Registration, RelationDecl, ServiceActionEntry, SqlMigration,
 };
 use utoipa::OpenApi;
 
-const PG_ROLES: &[PgRole] = &[
-    PgRole {
-        scope: "bank8:risk:read,bank8:risk:write",
-        role: "bank8_risk_service",
-        bypass_rls: false,
-        // Grants live in the bank8 vertical database only (DBX §6.6
-        // database-per-vertical, schema-per-service).
-        database: "bank8",
-        // Risk owns all its reads — inputs arrive as events, never
-        // cross-schema grants (risk DESIGN.md §8).
-        cross_schema_grants: &[],
-    },
-];
+const PG_ROLES: &[PgRole] = &[PgRole {
+    scope: "bank8:risk:read,bank8:risk:write",
+    role: "bank8_risk_service",
+    bypass_rls: false,
+    // Grants live in the bank8 vertical database only (DBX §6.6
+    // database-per-vertical, schema-per-service).
+    database: "bank8",
+    // Risk owns all its reads — inputs arrive as events, never
+    // cross-schema grants (risk DESIGN.md §8).
+    cross_schema_grants: &[],
+}];
 
 /// Workload scope grants (self-registration design §3.11). One entry per
 /// workload this service presents a certificate for.
@@ -37,7 +35,11 @@ const PG_ROLES: &[PgRole] = &[
 const M2M_GRANTS: &[M2mGrant] = &[
     M2mGrant {
         workload: "bank8:risk",
-        scopes: &["sentin8:bus:produce", "sentin8:bus:consume", "sentin8:stat:measure"],
+        scopes: &[
+            "sentin8:bus:produce",
+            "sentin8:bus:consume",
+            "sentin8:stat:measure",
+        ],
     },
     // Shield hot-reload consumer (BUSPOLICY-1 — see bank8-reporting).
     M2mGrant {
@@ -46,7 +48,11 @@ const M2M_GRANTS: &[M2mGrant] = &[
     },
     M2mGrant {
         workload: "risk",
-        scopes: &["sentin8:bus:produce", "sentin8:bus:consume", "sentin8:stat:measure"],
+        scopes: &[
+            "sentin8:bus:produce",
+            "sentin8:bus:consume",
+            "sentin8:stat:measure",
+        ],
     },
     M2mGrant {
         workload: "risk-audit",
@@ -59,29 +65,94 @@ const M2M_GRANTS: &[M2mGrant] = &[
 ];
 
 const ADMIN_SCOPES: &[AdminScope] = &[
-    AdminScope::Typed { role: "bank8:risk:admin", scope: "bank8:risk:exposures:read" },
-    AdminScope::Typed { role: "bank8:risk:admin", scope: "bank8:risk:limits:read" },
-    AdminScope::Typed { role: "bank8:risk:admin", scope: "bank8:risk:limits:write" },
-    AdminScope::Typed { role: "bank8:risk:admin", scope: "bank8:risk:stress:read" },
-    AdminScope::Typed { role: "bank8:risk:admin", scope: "bank8:risk:stress:write" },
+    AdminScope::Typed {
+        role: "bank8:risk:admin",
+        scope: "bank8:risk:exposures:read",
+    },
+    AdminScope::Typed {
+        role: "bank8:risk:admin",
+        scope: "bank8:risk:limits:read",
+    },
+    AdminScope::Typed {
+        role: "bank8:risk:admin",
+        scope: "bank8:risk:limits:write",
+    },
+    AdminScope::Typed {
+        role: "bank8:risk:admin",
+        scope: "bank8:risk:stress:read",
+    },
+    AdminScope::Typed {
+        role: "bank8:risk:admin",
+        scope: "bank8:risk:stress:write",
+    },
     // Policy-admin surface (policy design §3.6; principles §6.0b per-service scope).
-    AdminScope::Typed { role: "bank8:risk:admin", scope: "bank8:risk:policy:read" },
-    AdminScope::Typed { role: "bank8:risk:admin", scope: "bank8:risk:policy:write" },
+    AdminScope::Typed {
+        role: "bank8:risk:admin",
+        scope: "bank8:risk:policy:read",
+    },
+    AdminScope::Typed {
+        role: "bank8:risk:admin",
+        scope: "bank8:risk:policy:write",
+    },
 ];
 
-const ERROR_CODES: &[ErrorCode] = &[
-    ErrorCode { enum_name: "RiskValidationFailed", error_code: "risk_validation_failed", status_code: 422 },
-];
+const ERROR_CODES: &[ErrorCode] = &[ErrorCode {
+    enum_name: "RiskValidationFailed",
+    error_code: "risk_validation_failed",
+    status_code: 422,
+}];
 
 const ADMIN_UI_PAGES: &[AdminUiPage] = &[
-    AdminUiPage { route: "overview", label: "Overview", ui_endpoint: "/v1/admin/ui/overview", data_endpoint: "/v1/admin/overview", icon: "0xe1b1" },
-    AdminUiPage { route: "limits", label: "Limits", ui_endpoint: "/v1/admin/ui/limits", data_endpoint: "/v1/admin/overview", icon: "0xf04e6" },
-    AdminUiPage { route: "stress", label: "Stress", ui_endpoint: "/v1/admin/ui/stress", data_endpoint: "/v1/admin/overview", icon: "0xe7f4" },
+    AdminUiPage {
+        route: "overview",
+        label: "Overview",
+        ui_endpoint: "/v1/admin/ui/overview",
+        data_endpoint: "/v1/admin/overview",
+        icon: "0xe1b1",
+    },
+    AdminUiPage {
+        route: "limits",
+        label: "Limits",
+        ui_endpoint: "/v1/admin/ui/limits",
+        data_endpoint: "/v1/admin/overview",
+        icon: "0xf04e6",
+    },
+    AdminUiPage {
+        route: "stress",
+        label: "Stress",
+        ui_endpoint: "/v1/admin/ui/stress",
+        data_endpoint: "/v1/admin/overview",
+        icon: "0xe7f4",
+    },
     // Sentin8:Policy admin surface (§3.6, post pattern).
-    AdminUiPage { route: "policy-sets", label: "Policy Sets", ui_endpoint: "/v1/admin/ui/policy-sets", data_endpoint: "/v1/admin/policy-sets", icon: "0xe8b8" },
-    AdminUiPage { route: "policy-decisions", label: "Policy Decisions", ui_endpoint: "/v1/admin/ui/policy-decisions", data_endpoint: "/v1/admin/policy-decisions", icon: "0xf070" },
-    AdminUiPage { route: "relations", label: "Relations", ui_endpoint: "/v1/admin/ui/relations", data_endpoint: "/v1/admin/relations", icon: "0xe572" },
-    AdminUiPage { route: "attributes", label: "Attributes", ui_endpoint: "/v1/admin/ui/attributes", data_endpoint: "/v1/admin/attributes", icon: "0xe8d3" },
+    AdminUiPage {
+        route: "policy-sets",
+        label: "Policy Sets",
+        ui_endpoint: "/v1/admin/ui/policy-sets",
+        data_endpoint: "/v1/admin/policy-sets",
+        icon: "0xe8b8",
+    },
+    AdminUiPage {
+        route: "policy-decisions",
+        label: "Policy Decisions",
+        ui_endpoint: "/v1/admin/ui/policy-decisions",
+        data_endpoint: "/v1/admin/policy-decisions",
+        icon: "0xf070",
+    },
+    AdminUiPage {
+        route: "relations",
+        label: "Relations",
+        ui_endpoint: "/v1/admin/ui/relations",
+        data_endpoint: "/v1/admin/relations",
+        icon: "0xe572",
+    },
+    AdminUiPage {
+        route: "attributes",
+        label: "Attributes",
+        ui_endpoint: "/v1/admin/ui/attributes",
+        data_endpoint: "/v1/admin/attributes",
+        icon: "0xe8d3",
+    },
 ];
 
 /// Default declarative policy set (Sentin8:Policy design §3.2/§3.4,
@@ -141,16 +212,14 @@ const AUDIT_FINDINGS: &[AuditFinding] = &[
     },
 ];
 
-const SERVICE_ACTIONS: &[ServiceActionEntry] = &[
-    ServiceActionEntry {
-        action: "risk_stress_run",
-        service_type: "bank8:risk",
-        platform_domain_key: "bank8:risk",
-        method: "POST",
-        endpoint: "/v1/stress/run",
-        scope: "bank8:risk:stress:write",
-    },
-];
+const SERVICE_ACTIONS: &[ServiceActionEntry] = &[ServiceActionEntry {
+    action: "risk_stress_run",
+    service_type: "bank8:risk",
+    platform_domain_key: "bank8:risk",
+    method: "POST",
+    endpoint: "/v1/stress/run",
+    scope: "bank8:risk:stress:write",
+}];
 
 fn openapi_spec() -> serde_json::Value {
     serde_json::to_value(crate::openapi::RiskOpenApi::openapi()).unwrap_or(serde_json::Value::Null)
@@ -176,9 +245,11 @@ pub fn print(section: Option<String>) -> anyhow::Result<()> {
             service_flag: "risk",
             pages: ADMIN_UI_PAGES,
         }),
-        sql_migrations: vec![
-            SqlMigration { version: 1, name: "init", sql: SQL_1_INIT },
-        ],
+        sql_migrations: vec![SqlMigration {
+            version: 1,
+            name: "init",
+            sql: SQL_1_INIT,
+        }],
         audit_findings: Some(AUDIT_FINDINGS),
         service_actions: Some(SERVICE_ACTIONS),
         m2m_grants: Some(M2M_GRANTS),

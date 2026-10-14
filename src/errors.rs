@@ -29,7 +29,12 @@ pub struct RiskErrorResponse {
 
 impl RiskErrorResponse {
     pub fn new(status: u16, code: impl Into<String>, message: impl Into<String>) -> Self {
-        Self { status_code: status, error_code: code.into(), message: message.into(), details: None }
+        Self {
+            status_code: status,
+            error_code: code.into(),
+            message: message.into(),
+            details: None,
+        }
     }
 
     pub fn not_found(message: impl Into<String>) -> Self {
@@ -47,8 +52,8 @@ impl RiskErrorResponse {
 
 impl IntoResponse for RiskErrorResponse {
     fn into_response(self) -> Response {
-        let status = StatusCode::from_u16(self.status_code)
-            .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+        let status =
+            StatusCode::from_u16(self.status_code).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
         (status, Json(self)).into_response()
     }
 }

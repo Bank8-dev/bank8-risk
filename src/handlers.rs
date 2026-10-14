@@ -21,8 +21,8 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
-use uuid::Uuid;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 use crate::auth;
 use crate::config::RiskConfig;
@@ -63,10 +63,24 @@ pub(crate) async fn set_tenant_context(conn: &mut sqlx::PgConnection, env_id: Uu
 /// the MemBus state refresh first (fail-soft, newest-wins), then the
 /// durable outbox row the shell relay drains to Bus `POST /v1/produce`
 /// (idempotency_key = row id).
-pub(crate) async fn emit_event(state: &AppState, env_id: Uuid, event_type: &str, payload: serde_json::Value) {
-    state.membus.publish_pubsub("risk", event_type, payload.clone()).await;
-    if let Err(e) =
-        sentin8::bus::outbox::insert_outbox_row_pool(&state.pool, env_id, "risk", event_type, &payload).await
+pub(crate) async fn emit_event(
+    state: &AppState,
+    env_id: Uuid,
+    event_type: &str,
+    payload: serde_json::Value,
+) {
+    state
+        .membus
+        .publish_pubsub("risk", event_type, payload.clone())
+        .await;
+    if let Err(e) = sentin8::bus::outbox::insert_outbox_row_pool(
+        &state.pool,
+        env_id,
+        "risk",
+        event_type,
+        &payload,
+    )
+    .await
     {
         tracing::warn!(error = %e, event_type = %event_type, "bank8:risk: failed to emit outbox event");
     }
@@ -129,7 +143,9 @@ fn row_to_limit(row: &sqlx::postgres::PgRow) -> LimitResponse {
 /// `GET /v1/health` — service health payload.
 pub async fn health(State(state): State<AppState>) -> impl IntoResponse {
     let db_ok = sqlx::query("SELECT 1").execute(&state.pool).await.is_ok();
-    Json(serde_json::json!({ "status": if db_ok { "ok" } else { "degraded" }, "service": "bank8:risk" }))
+    Json(
+        serde_json::json!({ "status": if db_ok { "ok" } else { "degraded" }, "service": "bank8:risk" }),
+    )
 }
 
 // ── Exposures ─────────────────────────────────────────────────────────────
@@ -142,7 +158,13 @@ pub async fn list_exposures(
     Query(q): Query<ListExposuresQuery>,
 ) -> Result<Json<Vec<ExposureResponse>>, (StatusCode, String)> {
     let a = auth::verify_token(&state.config, &headers).await?;
-    crate::policy::require(&state.policy, &a, &headers, sentin8::shield::EvalTarget::new("bank8:risk:exposures:read")).await?;
+    crate::policy::require(
+        &state.policy,
+        &a,
+        &headers,
+        sentin8::shield::EvalTarget::new("bank8:risk:exposures:read"),
+    )
+    .await?;
     // Same-transaction discipline (DESIGN.md §5).
     let mut conn = state.pool.begin().await.map_err(crate::errors::err_db)?;
     set_tenant_context(&mut conn, a.env_id()).await;
@@ -154,7 +176,9 @@ pub async fn list_exposures(
     )
     .bind(a.env_id())
     .bind(q.dimension)
-    .fetch_all(&mut *conn).await.map_err(crate::errors::err_db)?;
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(crate::errors::err_db)?;
     Ok(Json(rows.iter().map(row_to_exposure).collect()))
 }
 
@@ -167,7 +191,13 @@ pub async fn list_limits(
     headers: HeaderMap,
 ) -> Result<Json<Vec<LimitResponse>>, (StatusCode, String)> {
     let a = auth::verify_token(&state.config, &headers).await?;
-    crate::policy::require(&state.policy, &a, &headers, sentin8::shield::EvalTarget::new("bank8:risk:limits:read")).await?;
+    crate::policy::require(
+        &state.policy,
+        &a,
+        &headers,
+        sentin8::shield::EvalTarget::new("bank8:risk:limits:read"),
+    )
+    .await?;
     let mut conn = state.pool.begin().await.map_err(crate::errors::err_db)?;
     set_tenant_context(&mut conn, a.env_id()).await;
     let rows = sqlx::query(
@@ -177,7 +207,9 @@ pub async fn list_limits(
             ORDER BY limit_type"#,
     )
     .bind(a.env_id())
-    .fetch_all(&mut *conn).await.map_err(crate::errors::err_db)?;
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(crate::errors::err_db)?;
     Ok(Json(rows.iter().map(row_to_limit).collect()))
 }
 
@@ -189,7 +221,13 @@ pub async fn get_limit(
     Path(id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let a = auth::verify_token(&state.config, &headers).await?;
-    crate::policy::require(&state.policy, &a, &headers, sentin8::shield::EvalTarget::new("bank8:risk:limits:read")).await?;
+    crate::policy::require(
+        &state.policy,
+        &a,
+        &headers,
+        sentin8::shield::EvalTarget::new("bank8:risk:limits:read"),
+    )
+    .await?;
     let mut conn = state.pool.begin().await.map_err(crate::errors::err_db)?;
     set_tenant_context(&mut conn, a.env_id()).await;
     let limit = sqlx::query(
@@ -198,7 +236,9 @@ pub async fn get_limit(
     )
     .bind(id)
     .bind(a.env_id())
-    .fetch_optional(&mut *conn).await.map_err(crate::errors::err_db)?;
+    .fetch_optional(&mut *conn)
+    .await
+    .map_err(crate::errors::err_db)?;
     let Some(limit) = limit else {
         return Err((StatusCode::NOT_FOUND, format!("limit {id} not found")));
     };
@@ -208,7 +248,9 @@ pub async fn get_limit(
     )
     .bind(id)
     .bind(a.env_id())
-    .fetch_all(&mut *conn).await.map_err(crate::errors::err_db)?;
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(crate::errors::err_db)?;
     Ok(Json(serde_json::json!({
         "id": limit.get::<Uuid, _>("id"),
         "limit_type": limit.get::<String, _>("limit_type"),
@@ -244,7 +286,13 @@ pub async fn create_scenario(
     Json(req): Json<CreateScenarioRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let a = auth::verify_token(&state.config, &headers).await?;
-    crate::policy::require(&state.policy, &a, &headers, sentin8::shield::EvalTarget::new("bank8:risk:stress:write")).await?;
+    crate::policy::require(
+        &state.policy,
+        &a,
+        &headers,
+        sentin8::shield::EvalTarget::new("bank8:risk:stress:write"),
+    )
+    .await?;
     let mut tx = state.pool.begin().await.map_err(crate::errors::err_db)?;
     set_tenant_context(&mut tx, a.env_id()).await;
     let id = sqlx::query_scalar::<_, Uuid>(
@@ -257,10 +305,18 @@ pub async fn create_scenario(
     .bind(a.env_id())
     .bind(&req.name)
     .bind(serde_json::to_string(&req.assumptions).unwrap_or_default())
-    .fetch_one(&mut *tx).await.map_err(crate::errors::err_db)?;
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(crate::errors::err_db)?;
     tx.commit().await.map_err(crate::errors::err_db)?;
     let payload = serde_json::json!({ "id": id, "name": req.name });
-    emit_event(&state, a.env_id(), "bank8:risk:stress:scenario:upserted", payload.clone()).await;
+    emit_event(
+        &state,
+        a.env_id(),
+        "bank8:risk:stress:scenario:upserted",
+        payload.clone(),
+    )
+    .await;
     Ok(Json(payload))
 }
 
@@ -282,10 +338,19 @@ pub async fn upsert_limit(
     Json(req): Json<UpsertLimitRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let a = auth::verify_token(&state.config, &headers).await?;
-    crate::policy::require(&state.policy, &a, &headers, sentin8::shield::EvalTarget::new("bank8:risk:limits:write")).await?;
+    crate::policy::require(
+        &state.policy,
+        &a,
+        &headers,
+        sentin8::shield::EvalTarget::new("bank8:risk:limits:write"),
+    )
+    .await?;
     let valid = ["capital_ratio", "lcr", "nsfr", "concentration", "var"];
     if !valid.contains(&req.limit_type.as_str()) {
-        return Err((StatusCode::UNPROCESSABLE_ENTITY, format!("unknown limit_type: {}", req.limit_type)));
+        return Err((
+            StatusCode::UNPROCESSABLE_ENTITY,
+            format!("unknown limit_type: {}", req.limit_type),
+        ));
     }
     let mut tx = state.pool.begin().await.map_err(crate::errors::err_db)?;
     set_tenant_context(&mut tx, a.env_id()).await;
@@ -299,10 +364,19 @@ pub async fn upsert_limit(
     .bind(a.env_id())
     .bind(&req.limit_type)
     .bind(req.threshold)
-    .fetch_one(&mut *tx).await.map_err(crate::errors::err_db)?;
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(crate::errors::err_db)?;
     tx.commit().await.map_err(crate::errors::err_db)?;
-    let payload = serde_json::json!({ "id": id, "limit_type": req.limit_type, "threshold": req.threshold });
-    emit_event(&state, a.env_id(), "bank8:risk:limit:upserted", payload.clone()).await;
+    let payload =
+        serde_json::json!({ "id": id, "limit_type": req.limit_type, "threshold": req.threshold });
+    emit_event(
+        &state,
+        a.env_id(),
+        "bank8:risk:limit:upserted",
+        payload.clone(),
+    )
+    .await;
     Ok(Json(payload))
 }
 
@@ -316,7 +390,13 @@ pub async fn run_stress(
     Json(req): Json<StressRunRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let a = auth::verify_token(&state.config, &headers).await?;
-    crate::policy::require(&state.policy, &a, &headers, sentin8::shield::EvalTarget::new("bank8:risk:stress:write")).await?;
+    crate::policy::require(
+        &state.policy,
+        &a,
+        &headers,
+        sentin8::shield::EvalTarget::new("bank8:risk:stress:write"),
+    )
+    .await?;
     let mut conn = state.pool.begin().await.map_err(crate::errors::err_db)?;
     set_tenant_context(&mut conn, a.env_id()).await;
     let scenario = sqlx::query(
@@ -325,9 +405,14 @@ pub async fn run_stress(
     )
     .bind(req.scenario_id)
     .bind(a.env_id())
-    .fetch_optional(&mut *conn).await.map_err(crate::errors::err_db)?;
+    .fetch_optional(&mut *conn)
+    .await
+    .map_err(crate::errors::err_db)?;
     let Some(scenario) = scenario else {
-        return Err((StatusCode::NOT_FOUND, format!("scenario {} not found", req.scenario_id)));
+        return Err((
+            StatusCode::NOT_FOUND,
+            format!("scenario {} not found", req.scenario_id),
+        ));
     };
     let scenario_id: Uuid = scenario.get("id");
     let name: String = scenario.get("name");
@@ -343,10 +428,21 @@ pub async fn run_stress(
     .bind(a.env_id())
     .bind(scenario_id)
     .bind(&snapshot_ref)
-    .bind(serde_json::to_string(&serde_json::json!({ "scenario": name, "status": "completed" })).unwrap_or_default())
-    .fetch_one(&mut *conn).await.map_err(crate::errors::err_db)?;
+    .bind(
+        serde_json::to_string(&serde_json::json!({ "scenario": name, "status": "completed" }))
+            .unwrap_or_default(),
+    )
+    .fetch_one(&mut *conn)
+    .await
+    .map_err(crate::errors::err_db)?;
     conn.commit().await.map_err(crate::errors::err_db)?;
     let payload = serde_json::json!({ "result_id": row, "scenario_id": scenario_id, "snapshot_ref": snapshot_ref });
-    emit_event(&state, a.env_id(), "bank8:risk:stress:completed", payload.clone()).await;
+    emit_event(
+        &state,
+        a.env_id(),
+        "bank8:risk:stress:completed",
+        payload.clone(),
+    )
+    .await;
     Ok(Json(payload))
 }
