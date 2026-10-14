@@ -1,0 +1,20 @@
+{
+  "vertical": "bank8",
+  "services": [
+    {
+      "service_type": "bank8:risk",
+      "event_triggers": [
+        {
+          "event_type": "bank8:ledger:posting:created",
+          "consumer_group": "bank8:risk:measure",
+          "action": "update_exposure"
+        },
+        {
+          "event_type": "bank8:payments:instruction:completed",
+          "consumer_group": "bank8:risk:measure",
+          "action": "update_exposure"
+        }
+      ]
+    }
+  ]
+}
