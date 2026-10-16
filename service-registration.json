@@ -14,7 +14,11 @@
           "consumer_group": "bank8:risk:measure",
           "action": "update_exposure"
         }
-      ]
+      ],
+      "telemetry_property": {
+        "slug": "risk",
+        "name": "Bank8:Risk Telemetry"
+      }
     }
   ]
 }
