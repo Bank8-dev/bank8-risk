@@ -1,0 +1,399 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "bank8-risk",
+    "description": "Sentin8 Bank8:Risk — prudential risk measurement: capital, liquidity, credit (ECL), limits, stress.",
+    "license": {
+      "name": "MIT OR Apache-2.0",
+      "identifier": "MIT OR Apache-2.0"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/v1/admin/overview": {
+      "get": {
+        "tags": [
+          "admin-ui"
+        ],
+        "summary": "GET /v1/admin/overview — the data endpoint behind the overview page:\nlimit/breach counts for the tenant env.",
+        "operationId": "admin_overview",
+        "parameters": [
+          {
+            "name": "target_env_id",
+            "in": "query",
+            "description": "Target env (RLS context)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "limit/breach counts",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the admin scope"
+          }
+        },
+        "security": [
+          {
+            "bank8:admin": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/ui/{page}": {
+      "get": {
+        "tags": [
+          "admin-ui"
+        ],
+        "summary": "GET /v1/admin/ui/{page} — return the RFW definition for the requested\nadmin page.",
+        "operationId": "get_admin_ui",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "path",
+            "description": "RFW page name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "target_env_id",
+            "in": "query",
+            "description": "Target env (RLS context)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "RFW page definition",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "403": {
+            "description": "Caller lacks the admin scope"
+          }
+        },
+        "security": [
+          {
+            "bank8:admin": []
+          }
+        ]
+      }
+    },
+    "/v1/exposures": {
+      "get": {
+        "tags": [
+          "handlers"
+        ],
+        "summary": "`GET /v1/exposures` — list measured exposures, optionally by dimension.",
+        "operationId": "list_exposures",
+        "parameters": [
+          {
+            "name": "dimension",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExposureResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/health": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "`GET /v1/health` — service health payload.",
+        "description": "Carries the binary's build identity (`version`/`build`, BUILDID-1) so\ncaptain's monitor populates `make status`'s VERSION column for every\ninstance — the consuming BINARY's identity, never a shared crate's.",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "Liveness (version, build)"
+          }
+        },
+        "security": []
+      }
+    },
+    "/v1/limits": {
+      "get": {
+        "tags": [
+          "handlers"
+        ],
+        "summary": "`GET /v1/limits` — list configured limits with breach state.",
+        "operationId": "list_limits",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LimitResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "handlers"
+        ],
+        "summary": "`POST /v1/limits` — upsert a limit threshold (admin-scoped;\nidempotent per (env, limit_type)). The limit_type must be one of the\nschema's CHECK values.",
+        "operationId": "upsert_limit",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertLimitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/v1/limits/{id}": {
+      "get": {
+        "tags": [
+          "handlers"
+        ],
+        "summary": "`GET /v1/limits/{id}` — limit detail with breach history.",
+        "operationId": "get_limit",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/stress/run": {
+      "post": {
+        "tags": [
+          "handlers"
+        ],
+        "summary": "`POST /v1/stress/run` — run a scenario's shocks against a\npoint-in-time snapshot (on-demand full recompute; never touches the\nincremental hot path). Idempotent per (scenario, snapshot ref).",
+        "operationId": "run_stress",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StressRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/stress/scenarios": {
+      "post": {
+        "tags": [
+          "handlers"
+        ],
+        "summary": "`POST /v1/stress/scenarios` — author a declarative scenario\n(admin-scoped). Idempotent per (env, name): re-authoring a scenario\nupdates its assumptions in place (registry data, not code).",
+        "operationId": "create_scenario",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateScenarioRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateScenarioRequest": {
+        "type": "object",
+        "description": "Request body for authoring a stress scenario — declarative assumption\nset (shock parameters on the measured dimensions); data, never a\nFunc hook (a hook cannot be audited as a filing input — DESIGN.md\n§10 resolved).",
+        "required": [
+          "name",
+          "assumptions"
+        ],
+        "properties": {
+          "assumptions": {},
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "ExposureResponse": {
+        "type": "object",
+        "description": "A measured exposure position.",
+        "required": [
+          "id",
+          "dimension",
+          "currency",
+          "amount"
+        ],
+        "properties": {
+          "amount": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "dimension": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "LimitResponse": {
+        "type": "object",
+        "description": "A configured limit with its current breach state.",
+        "required": [
+          "id",
+          "limit_type",
+          "threshold",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "limit_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "threshold": {
+            "type": "string"
+          }
+        }
+      },
+      "ListExposuresQuery": {
+        "type": "object",
+        "description": "Query for listing exposures by dimension.",
+        "properties": {
+          "dimension": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "StressRunRequest": {
+        "type": "object",
+        "description": "Request body for `POST /v1/stress/run` — an on-demand full recompute\nof the measured dimensions with a scenario's shocks applied.",
+        "required": [
+          "scenario_id"
+        ],
+        "properties": {
+          "scenario_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "UpsertLimitRequest": {
+        "type": "object",
+        "description": "Request body for upserting a limit (jurisdiction floors arrive as\nregistry data through this surface; admins tune thresholds).",
+        "required": [
+          "limit_type",
+          "threshold"
+        ],
+        "properties": {
+          "limit_type": {
+            "type": "string"
+          },
+          "threshold": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "security": [],
+  "tags": [
+    {
+      "name": "risk",
+      "description": "Bank8:Risk — prudential risk measurement: capital, liquidity, credit (ECL), limits, stress"
+    }
+  ]
+}
