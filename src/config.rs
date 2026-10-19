@@ -5,10 +5,10 @@
 
 //! Risk configuration.
 //!
-//! URLs only — no tokens. Risk's inputs are Bus events and its outputs
+//! URLs only - no tokens. Risk's inputs are Bus events and its outputs
 //! ride the local outbox → shell relay (risk DESIGN.md §8); the only
 //! outbound identity is the worker's own certificate-presenting Bus
-//! client built in `worker.rs` (CERTFREE-4V — single identity plane,
+//! client built in `worker.rs` (CERTFREE-4V - single identity plane,
 //! principles §4.1): a failed certificate mint fails the consume
 //! closed; there is no static-token fallback.
 
@@ -27,7 +27,7 @@ pub struct RiskConfig {
     /// Bus stream families the measurement worker consumes
     /// (`ledger`, `payments`).
     pub consume_families: Vec<String>,
-    /// Shared Auth client — constructed once so the discovery and JWKS
+    /// Shared Auth client - constructed once so the discovery and JWKS
     /// caches are reused across every request.
     pub sentin8_auth_client: AuthClient,
 }

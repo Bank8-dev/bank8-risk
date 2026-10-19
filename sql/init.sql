@@ -3,10 +3,10 @@
 -- SPDX-FileCopyrightText: Copyright Contributors to the Bank8:Risk
 -- SPDX-License-Identifier: Apache-2.0
 
--- Bank8:Risk — the service's own schema `risk` (schema-per-service):
+-- Bank8:Risk - the service's own schema `risk` (schema-per-service):
 -- risk_* domain tables + risk.outbox / risk.audit_journal producer
 -- tables, all FORCE-RLS env-scoped, per services/risk/DESIGN.md §3.
--- No FKs or joins into ledger.* / payments.* — inputs arrive as events
+-- No FKs or joins into ledger.* / payments.* - inputs arrive as events
 -- or public-API reads (DESIGN.md §8 invariant).
 
 CREATE SCHEMA IF NOT EXISTS risk;
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS risk.risk_limits (
     UNIQUE (env_id, limit_type)
 );
 
--- Measured positions — the incremental-UPSERT hot path keyed by
+-- Measured positions - the incremental-UPSERT hot path keyed by
 -- dimension (DESIGN.md §7): a posting/instruction event updates the
 -- single matching row, never a full recompute.
 CREATE TABLE IF NOT EXISTS risk.exposures (
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS risk.exposures (
 CREATE INDEX IF NOT EXISTS idx_risk_exposures_env
     ON risk.exposures (env_id);
 
--- Breach history — at most one row per (limit, direction) transition;
+-- Breach history - at most one row per (limit, direction) transition;
 -- supports the dashboard's breach-history view and the filing inputs.
 CREATE TABLE IF NOT EXISTS risk.limit_breaches (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS risk.limit_breaches (
 CREATE INDEX IF NOT EXISTS idx_risk_breaches_limit
     ON risk.limit_breaches (limit_id, breached_at);
 
--- Basel capital components (tier, amount) — aggregated per recompute.
+-- Basel capital components (tier, amount) - aggregated per recompute.
 CREATE TABLE IF NOT EXISTS risk.capital_components (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     env_id      UUID NOT NULL,
@@ -80,13 +80,13 @@ CREATE TABLE IF NOT EXISTS risk.ecl_models (
     env_id      UUID NOT NULL,
     customer_id UUID NOT NULL,
     stage       TEXT NOT NULL CHECK (stage IN ('stage1', 'stage2', 'stage3')),
-    -- 12-month ECL (stage1) or lifetime ECL (stages 2–3).
+    -- 12-month ECL (stage1) or lifetime ECL (stages 2-3).
     ecl         NUMERIC NOT NULL DEFAULT 0,
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (env_id, customer_id)
 );
 
--- Declarative stress scenarios — assumption sets as data, never
+-- Declarative stress scenarios - assumption sets as data, never
 -- Func-authored hooks (DESIGN.md §10 resolved: a hook cannot be audited
 -- as a filing input).
 CREATE TABLE IF NOT EXISTS risk.stress_scenarios (
@@ -244,11 +244,11 @@ CREATE POLICY audit_journal_dml ON risk.audit_journal
     USING (sentin8_context_initialized() AND env_id = sentin8_current_env_id())
     WITH CHECK (sentin8_context_initialized() AND env_id = sentin8_current_env_id());
 
--- ── Per-service role grants + search_path (F1 — §4.3e) ──────────────────
+-- ── Per-service role grants + search_path (F1 - §4.3e) ──────────────────
 -- The risk service connects via its own PostgreSQL role
 -- (bank8_risk_service, created + granted by `sentin8-cli vertical
 -- init/enroll` from this service's --print-registration
--- --section=pg_roles). Grants scoped to the OWN schema only — no
+-- --section=pg_roles). Grants scoped to the OWN schema only - no
 -- blanket grants, no cross-schema grants (DESIGN.md §8: inputs are
 -- events or public-API reads, never ledger/payments tables).
 DO $$

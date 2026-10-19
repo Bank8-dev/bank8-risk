@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Bank8:Risk
 // SPDX-License-Identifier: Apache-2.0
 
-//! Risk error responses — standard error format with error codes and
+//! Risk error responses - standard error format with error codes and
 //! HTTP status mappings, integrated with Axum via `into_response`.
 
 use axum::{

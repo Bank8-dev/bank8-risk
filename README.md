@@ -1,8 +1,8 @@
-# Bank8:Risk — README
+# Bank8:Risk - README
 
 Prudential risk measurement: capital (Basel), liquidity (LCR/NSFR),
 credit (IFRS 9 ECL), market, and operational risk, plus stress testing
-and limit monitoring — a continuous measurement engine that consumes
+and limit monitoring - a continuous measurement engine that consumes
 posting/transaction events and emits limit-breach events, never moving
 money itself.
 
@@ -62,25 +62,25 @@ graph TD
 
 ## Key Traits and Data Structures
 
-- `RiskLimit` — a configured threshold (capital ratio, LCR, concentration,
+- `RiskLimit` - a configured threshold (capital ratio, LCR, concentration,
   VaR) with breach state; crossing it emits `bank8:risk:limit:breached`.
-- `Exposure` — a measured position (counterparty, currency, asset class)
+- `Exposure` - a measured position (counterparty, currency, asset class)
   updated incrementally from posting events.
-- `CapitalComponents` / `LiquidityBuffers` — Basel / LCR-NSFR bucket
+- `CapitalComponents` / `LiquidityBuffers` - Basel / LCR-NSFR bucket
   aggregations computed from the ledger.
-- `EclModel` — IFRS 9 expected-credit-loss staging (12-month vs.
+- `EclModel` - IFRS 9 expected-credit-loss staging (12-month vs.
   lifetime) driven by credit events.
 
 ## Rationale, Trade-offs, and Alternatives
 
-- **Event-driven measurement** — risk reacts to `bank8:ledger:posting:created`
+- **Event-driven measurement** - risk reacts to `bank8:ledger:posting:created`
   and `bank8:payments:instruction:completed` rather than polling; the
   event payload carries the full snapshot (account id + amount + posting
   id), minimizing read-back (principles §4.7, event-first).
-- **Breach as an event, not a table poll** — limits are monitored
+- **Breach as an event, not a table poll** - limits are monitored
   incrementally; a breach is a domain event Compliance and Reporting
   both consume, never a shared table grant.
-- **Jurisdiction drives thresholds** — capital/liquidity floors differ
+- **Jurisdiction drives thresholds** - capital/liquidity floors differ
   by regulator; they are registry data (CRR3/CRD6 output floor, OSFI
   CAR/LAR, US Basel III), not code.
 

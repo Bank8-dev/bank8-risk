@@ -3,14 +3,14 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Bank8:Risk
 // SPDX-License-Identifier: Apache-2.0
 
-//! Risk embedded measurement worker — the durable Bus tier of the access
+//! Risk embedded measurement worker - the durable Bus tier of the access
 //! order (membus → bus → owner API; principles §4.7): an in-process SSE
 //! consumer on the `ledger` + `payments` families that updates risk
-//! state incrementally from event payloads (no read-back — the events
+//! state incrementally from event payloads (no read-back - the events
 //! carry the full domain snapshot per the payload-completeness rule),
 //! then evaluates limits and emits `bank8:risk:limit:breached` exactly
 //! once per (limit, direction) transition. Spawned from `build_state`
-//! (the WKR-MERGE embedded-worker precedent — no separate binary).
+//! (the WKR-MERGE embedded-worker precedent - no separate binary).
 //! MemBus is the state-refresh tier, not trigger transport.
 
 use std::sync::Arc;
@@ -21,13 +21,13 @@ use uuid::Uuid;
 
 use crate::handlers::{set_tenant_context, AppState};
 
-/// Consumer group name — identifies this risk instance to Sentin8:Bus.
+/// Consumer group name - identifies this risk instance to Sentin8:Bus.
 const CONSUMER_GROUP: &str = "bank8:risk:measure";
 
 /// Reconnect delay when the Bus SSE connection drops or an error occurs.
 const RECONNECT_DELAY: Duration = Duration::from_secs(2);
 
-/// Shared worker state — the service state clone + Bus client.
+/// Shared worker state - the service state clone + Bus client.
 struct WorkerState {
     state: AppState,
     bus: sentin8::bus::client::BusClient,
@@ -38,7 +38,7 @@ struct WorkerState {
 /// `server::build_state`). One SSE connection per stream family.
 pub async fn spawn(state: &AppState) {
     // Cert-presenting Bus client (CERTFREE-4V): the `risk-worker`
-    // workload CERTIFICATE is the identity — no DCR, no token (auth
+    // workload CERTIFICATE is the identity - no DCR, no token (auth
     // DESIGN §4.3f); the mint retries while the fleet boots.
     let bus = loop {
         match sentin8::bus::client::BusClient::for_workload(
@@ -69,7 +69,7 @@ pub async fn spawn(state: &AppState) {
     }
 }
 
-/// SSE consumer loop for one stream family — connect to Bus, receive
+/// SSE consumer loop for one stream family - connect to Bus, receive
 /// pushed messages, process each measurement event (idempotently), ACK
 /// on success, nack on failure so Bus tracks retries/DLQ, reconnect
 /// with a 2s backoff.
@@ -128,7 +128,7 @@ async fn sse_consume_loop(state: Arc<WorkerState>) {
                 };
 
                 let message_id = msg["message_id"].as_str().unwrap_or("").to_string();
-                // The envelope carries the producer's tenant env — the RLS
+                // The envelope carries the producer's tenant env - the RLS
                 // context for this event's guarded writes (the WKR-TX1
                 // per-event context pattern).
                 let env_id = msg["env_id"].as_str().unwrap_or("").to_string();
@@ -143,7 +143,7 @@ async fn sse_consume_loop(state: Arc<WorkerState>) {
                     Err(e) => {
                         tracing::warn!(error = %e, message_id = %message_id, "risk-worker: measurement event failed; nacking for retry/DLQ");
                         // Nack so Bus tracks retries / DLQ (the Option is
-                        // the retry delay — None takes the default), then
+                        // the retry delay - None takes the default), then
                         // ACK to move on (the DLQ handles poison
                         // messages).
                         let _ = state
@@ -156,20 +156,20 @@ async fn sse_consume_loop(state: Arc<WorkerState>) {
             }
         }
 
-        tracing::info!(stream_family = %family, "risk-worker: bus SSE disconnected — reconnecting");
+        tracing::info!(stream_family = %family, "risk-worker: bus SSE disconnected - reconnecting");
         tokio::time::sleep(RECONNECT_DELAY).await;
     }
 }
 
 /// Process one measurement event: set the per-event tenant context
 /// (transaction-local, same connection as the guarded writes), UPSERT the
-/// matching exposure row (bounded single-row update — never a full
+/// matching exposure row (bounded single-row update - never a full
 /// recompute on the hot path, DESIGN.md §7), then evaluate the limits and
 /// emit a breach exactly once per (limit, direction) transition.
 ///
 /// Idempotency: the exposure UPSERT is keyed by (env, dimension,
 /// currency); re-delivery converges to the same amount only through the
-/// dedupe on the event idempotency key — an already-seen key is skipped
+/// dedupe on the event idempotency key - an already-seen key is skipped
 /// (DESIGN.md §8).
 async fn process_measurement_event(
     state: &AppState,
@@ -179,7 +179,7 @@ async fn process_measurement_event(
 ) -> Result<(), String> {
     let env_uuid = Uuid::parse_str(env_id).map_err(|_| format!("unparsable env_id: {env_id}"))?;
 
-    // Dedupe on the event idempotency key — re-delivery never
+    // Dedupe on the event idempotency key - re-delivery never
     // double-counts (§8 invariant; at-least-once stream + idempotent
     // consumer = effectively-once).
     let idem = payload["idempotency_key"]
@@ -187,7 +187,7 @@ async fn process_measurement_event(
         .or_else(|| payload["id"].as_str())
         .unwrap_or_default();
     if idem.is_empty() {
-        // No dedupe key on the envelope — skip rather than double-count.
+        // No dedupe key on the envelope - skip rather than double-count.
         tracing::debug!(event_type = %event_type, "risk-worker: event without idempotency_key skipped");
         return Ok(());
     }

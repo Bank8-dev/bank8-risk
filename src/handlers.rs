@@ -3,11 +3,11 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Bank8:Risk
 // SPDX-License-Identifier: Apache-2.0
 
-//! Risk HTTP handlers — exposures, limits (with breach state), capital,
+//! Risk HTTP handlers - exposures, limits (with breach state), capital,
 //! liquidity, ECL stages, and the on-demand stress run. See risk
 //! DESIGN.md §4.
 //!
-//! Every handler: verify (steps 1–4) → Shield gate (step 5, the ONLY
+//! Every handler: verify (steps 1-4) → Shield gate (step 5, the ONLY
 //! gate) → same-transaction tenant context → explicit `WHERE env_id`
 //! (defense-in-depth) → commit → emit (membus → bus, DESIGN.md §2).
 
@@ -32,24 +32,24 @@ use crate::policy::Engine;
 pub struct AppState {
     pub config: Arc<RiskConfig>,
     pub pool: sqlx::PgPool,
-    /// Shield policy engine — step 5 is the ONLY gate: handlers verify
-    /// the token (steps 1–4) then evaluate a
+    /// Shield policy engine - step 5 is the ONLY gate: handlers verify
+    /// the token (steps 1-4) then evaluate a
     /// `bank8:risk:<resource>:<action>` target; no JWT scope check
     /// remains.
     pub policy: Arc<Engine>,
-    /// Shared Sentin8:Policy admin surface (§3.6) — same engine instance
+    /// Shared Sentin8:Policy admin surface (§3.6) - same engine instance
     /// the request path evaluates.
     pub admin: sentin8::shield::admin::SharedAdminState,
-    /// MemBus handle (principles §4.7 — membus → bus → API): measured
+    /// MemBus handle (principles §4.7 - membus → bus → API): measured
     /// limit/exposure state publishes newest-wins ephemeral refreshes so
     /// risk dashboards update surgically; durable breach/stress events
-    /// ride the local outbox → relay → Bus. Fail-soft — a Valkey outage
+    /// ride the local outbox → relay → Bus. Fail-soft - a Valkey outage
     /// only degrades refresh, never a measurement.
     pub membus: sentin8::membus::ServiceBus,
 }
 
 /// Set the transaction-local RLS tenant context on a connection. MUST be
-/// awaited on the same connection every subsequent tenant query runs on —
+/// awaited on the same connection every subsequent tenant query runs on -
 /// `set_config(..., true)` scopes the setting to the transaction
 /// (architecture-principles §4.3d).
 pub(crate) async fn set_tenant_context(conn: &mut sqlx::PgConnection, env_id: Uuid) {
@@ -59,7 +59,7 @@ pub(crate) async fn set_tenant_context(conn: &mut sqlx::PgConnection, env_id: Uu
         .await;
 }
 
-/// Emit a risk event through both tiers (DESIGN.md §2 — membus → bus):
+/// Emit a risk event through both tiers (DESIGN.md §2 - membus → bus):
 /// the MemBus state refresh first (fail-soft, newest-wins), then the
 /// durable outbox row the shell relay drains to Bus `POST /v1/produce`
 /// (idempotency_key = row id).
@@ -106,7 +106,7 @@ pub struct LimitResponse {
     pub status: String,
 }
 
-/// Request body for `POST /v1/stress/run` — an on-demand full recompute
+/// Request body for `POST /v1/stress/run` - an on-demand full recompute
 /// of the measured dimensions with a scenario's shocks applied.
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct StressRunRequest {
@@ -149,11 +149,11 @@ fn row_to_limit(row: &sqlx::postgres::PgRow) -> LimitResponse {
     security(),
     tag = "meta",
 )]
-/// `GET /v1/health` — service health payload.
+/// `GET /v1/health` - service health payload.
 ///
 /// Carries the binary's build identity (`version`/`build`, BUILDID-1) so
 /// captain's monitor populates `make status`'s VERSION column for every
-/// instance — the consuming BINARY's identity, never a shared crate's.
+/// instance - the consuming BINARY's identity, never a shared crate's.
 pub async fn health(State(state): State<AppState>) -> impl IntoResponse {
     let db_ok = sqlx::query("SELECT 1").execute(&state.pool).await.is_ok();
     Json(
@@ -163,7 +163,7 @@ pub async fn health(State(state): State<AppState>) -> impl IntoResponse {
 
 // ── Exposures ─────────────────────────────────────────────────────────────
 
-/// `GET /v1/exposures` — list measured exposures, optionally by dimension.
+/// `GET /v1/exposures` - list measured exposures, optionally by dimension.
 #[utoipa::path(get, path = "/v1/exposures", params(ListExposuresQuery), responses((status = 200, body = [ExposureResponse])))]
 pub async fn list_exposures(
     State(state): State<AppState>,
@@ -197,7 +197,7 @@ pub async fn list_exposures(
 
 // ── Limits ────────────────────────────────────────────────────────────────
 
-/// `GET /v1/limits` — list configured limits with breach state.
+/// `GET /v1/limits` - list configured limits with breach state.
 #[utoipa::path(get, path = "/v1/limits", responses((status = 200, body = [LimitResponse])))]
 pub async fn list_limits(
     State(state): State<AppState>,
@@ -226,7 +226,7 @@ pub async fn list_limits(
     Ok(Json(rows.iter().map(row_to_limit).collect()))
 }
 
-/// `GET /v1/limits/{id}` — limit detail with breach history.
+/// `GET /v1/limits/{id}` - limit detail with breach history.
 #[utoipa::path(get, path = "/v1/limits/{id}", responses((status = 200, body = serde_json::Value)))]
 pub async fn get_limit(
     State(state): State<AppState>,
@@ -279,9 +279,9 @@ pub async fn get_limit(
 
 // ── Stress ────────────────────────────────────────────────────────────────
 
-/// Request body for authoring a stress scenario — declarative assumption
+/// Request body for authoring a stress scenario - declarative assumption
 /// set (shock parameters on the measured dimensions); data, never a
-/// Func hook (a hook cannot be audited as a filing input — DESIGN.md
+/// Func hook (a hook cannot be audited as a filing input - DESIGN.md
 /// §10 resolved).
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateScenarioRequest {
@@ -289,7 +289,7 @@ pub struct CreateScenarioRequest {
     pub assumptions: serde_json::Value,
 }
 
-/// `POST /v1/stress/scenarios` — author a declarative scenario
+/// `POST /v1/stress/scenarios` - author a declarative scenario
 /// (admin-scoped). Idempotent per (env, name): re-authoring a scenario
 /// updates its assumptions in place (registry data, not code).
 #[utoipa::path(post, path = "/v1/stress/scenarios", request_body = CreateScenarioRequest, responses((status = 200, body = serde_json::Value)))]
@@ -341,7 +341,7 @@ pub struct UpsertLimitRequest {
     pub threshold: rust_decimal::Decimal,
 }
 
-/// `POST /v1/limits` — upsert a limit threshold (admin-scoped;
+/// `POST /v1/limits` - upsert a limit threshold (admin-scoped;
 /// idempotent per (env, limit_type)). The limit_type must be one of the
 /// schema's CHECK values.
 #[utoipa::path(post, path = "/v1/limits", request_body = UpsertLimitRequest, responses((status = 200, body = serde_json::Value), (status = 422)))]
@@ -393,7 +393,7 @@ pub async fn upsert_limit(
     Ok(Json(payload))
 }
 
-/// `POST /v1/stress/run` — run a scenario's shocks against a
+/// `POST /v1/stress/run` - run a scenario's shocks against a
 /// point-in-time snapshot (on-demand full recompute; never touches the
 /// incremental hot path). Idempotent per (scenario, snapshot ref).
 #[utoipa::path(post, path = "/v1/stress/run", request_body = StressRunRequest, responses((status = 200, body = serde_json::Value)))]
@@ -430,7 +430,7 @@ pub async fn run_stress(
     let scenario_id: Uuid = scenario.get("id");
     let name: String = scenario.get("name");
     let snapshot_ref = chrono::Utc::now().format("%Y%m%dT%H%M%SZ").to_string();
-    // Idempotent per (scenario, snapshot ref) — the unique index is the
+    // Idempotent per (scenario, snapshot ref) - the unique index is the
     // dedupe floor.
     let row = sqlx::query_scalar::<_, Uuid>(
         r#"INSERT INTO stress_results (env_id, scenario_id, snapshot_ref, result)

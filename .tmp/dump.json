@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "bank8-risk",
-    "description": "Sentin8 Bank8:Risk — prudential risk measurement: capital, liquidity, credit (ECL), limits, stress.",
+    "description": "Sentin8 Bank8:Risk - prudential risk measurement: capital, liquidity, credit (ECL), limits, stress.",
     "license": {
       "name": "MIT OR Apache-2.0",
       "identifier": "MIT OR Apache-2.0"
@@ -15,7 +15,7 @@
         "tags": [
           "admin-ui"
         ],
-        "summary": "GET /v1/admin/overview — the data endpoint behind the overview page:\nlimit/breach counts for the tenant env.",
+        "summary": "GET /v1/admin/overview - the data endpoint behind the overview page:\nlimit/breach counts for the tenant env.",
         "operationId": "admin_overview",
         "parameters": [
           {
@@ -53,7 +53,7 @@
         "tags": [
           "admin-ui"
         ],
-        "summary": "GET /v1/admin/ui/{page} — return the RFW definition for the requested\nadmin page.",
+        "summary": "GET /v1/admin/ui/{page} - return the RFW definition for the requested\nadmin page.",
         "operationId": "get_admin_ui",
         "parameters": [
           {
@@ -100,7 +100,7 @@
         "tags": [
           "handlers"
         ],
-        "summary": "`GET /v1/exposures` — list measured exposures, optionally by dimension.",
+        "summary": "`GET /v1/exposures` - list measured exposures, optionally by dimension.",
         "operationId": "list_exposures",
         "parameters": [
           {
@@ -137,8 +137,8 @@
         "tags": [
           "meta"
         ],
-        "summary": "`GET /v1/health` — service health payload.",
-        "description": "Carries the binary's build identity (`version`/`build`, BUILDID-1) so\ncaptain's monitor populates `make status`'s VERSION column for every\ninstance — the consuming BINARY's identity, never a shared crate's.",
+        "summary": "`GET /v1/health` - service health payload.",
+        "description": "Carries the binary's build identity (`version`/`build`, BUILDID-1) so\ncaptain's monitor populates `make status`'s VERSION column for every\ninstance - the consuming BINARY's identity, never a shared crate's.",
         "operationId": "health",
         "responses": {
           "200": {
@@ -153,7 +153,7 @@
         "tags": [
           "handlers"
         ],
-        "summary": "`GET /v1/limits` — list configured limits with breach state.",
+        "summary": "`GET /v1/limits` - list configured limits with breach state.",
         "operationId": "list_limits",
         "responses": {
           "200": {
@@ -175,7 +175,7 @@
         "tags": [
           "handlers"
         ],
-        "summary": "`POST /v1/limits` — upsert a limit threshold (admin-scoped;\nidempotent per (env, limit_type)). The limit_type must be one of the\nschema's CHECK values.",
+        "summary": "`POST /v1/limits` - upsert a limit threshold (admin-scoped;\nidempotent per (env, limit_type)). The limit_type must be one of the\nschema's CHECK values.",
         "operationId": "upsert_limit",
         "requestBody": {
           "content": {
@@ -207,7 +207,7 @@
         "tags": [
           "handlers"
         ],
-        "summary": "`GET /v1/limits/{id}` — limit detail with breach history.",
+        "summary": "`GET /v1/limits/{id}` - limit detail with breach history.",
         "operationId": "get_limit",
         "responses": {
           "200": {
@@ -226,7 +226,7 @@
         "tags": [
           "handlers"
         ],
-        "summary": "`POST /v1/stress/run` — run a scenario's shocks against a\npoint-in-time snapshot (on-demand full recompute; never touches the\nincremental hot path). Idempotent per (scenario, snapshot ref).",
+        "summary": "`POST /v1/stress/run` - run a scenario's shocks against a\npoint-in-time snapshot (on-demand full recompute; never touches the\nincremental hot path). Idempotent per (scenario, snapshot ref).",
         "operationId": "run_stress",
         "requestBody": {
           "content": {
@@ -255,7 +255,7 @@
         "tags": [
           "handlers"
         ],
-        "summary": "`POST /v1/stress/scenarios` — author a declarative scenario\n(admin-scoped). Idempotent per (env, name): re-authoring a scenario\nupdates its assumptions in place (registry data, not code).",
+        "summary": "`POST /v1/stress/scenarios` - author a declarative scenario\n(admin-scoped). Idempotent per (env, name): re-authoring a scenario\nupdates its assumptions in place (registry data, not code).",
         "operationId": "create_scenario",
         "requestBody": {
           "content": {
@@ -284,7 +284,7 @@
     "schemas": {
       "CreateScenarioRequest": {
         "type": "object",
-        "description": "Request body for authoring a stress scenario — declarative assumption\nset (shock parameters on the measured dimensions); data, never a\nFunc hook (a hook cannot be audited as a filing input — DESIGN.md\n§10 resolved).",
+        "description": "Request body for authoring a stress scenario - declarative assumption\nset (shock parameters on the measured dimensions); data, never a\nFunc hook (a hook cannot be audited as a filing input - DESIGN.md\n§10 resolved).",
         "required": [
           "name",
           "assumptions"
@@ -360,7 +360,7 @@
       },
       "StressRunRequest": {
         "type": "object",
-        "description": "Request body for `POST /v1/stress/run` — an on-demand full recompute\nof the measured dimensions with a scenario's shocks applied.",
+        "description": "Request body for `POST /v1/stress/run` - an on-demand full recompute\nof the measured dimensions with a scenario's shocks applied.",
         "required": [
           "scenario_id"
         ],
@@ -393,7 +393,7 @@
   "tags": [
     {
       "name": "risk",
-      "description": "Bank8:Risk — prudential risk measurement: capital, liquidity, credit (ECL), limits, stress"
+      "description": "Bank8:Risk - prudential risk measurement: capital, liquidity, credit (ECL), limits, stress"
     }
   ]
 }

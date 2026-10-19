@@ -3,12 +3,12 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Bank8:Risk
 // SPDX-License-Identifier: Apache-2.0
 
-//! DB-backed schema-invariant tests (runtime-skip) — risk DESIGN.md §9.
+//! DB-backed schema-invariant tests (runtime-skip) - risk DESIGN.md §9.
 //! Exercises: FORCE-RLS rejects context-less inserts; the exposure UPSERT
 //! hot path converges (bounded single-row update); the (limit, direction)
 //! breach at-most-once invariant via guarded transitions; stress runs are
 //! idempotent per (scenario, snapshot ref); no cross-schema tables exist
-//! (§8 — inputs are events, never ledger/payments tables). Skipped when
+//! (§8 - inputs are events, never ledger/payments tables). Skipped when
 //! `DATABASE_URL` is unreachable.
 
 use sqlx::{PgPool, Row};
@@ -21,7 +21,7 @@ async fn test_pool() -> Option<PgPool> {
     match sqlx::PgPool::connect(&url).await {
         Ok(p) => Some(p),
         Err(e) => {
-            eprintln!("skipping DB-backed risk tests — no database: {e}");
+            eprintln!("skipping DB-backed risk tests - no database: {e}");
             None
         }
     }
@@ -30,7 +30,7 @@ async fn test_pool() -> Option<PgPool> {
 async fn with_context<'c>(pool: &'c PgPool, env_id: Uuid) -> sqlx::Transaction<'c, sqlx::Postgres> {
     let mut tx = pool.begin().await.expect("tx");
     // The context-set and every dependent insert share ONE transaction
-    // (the ledger db_handlers discipline — set_config true is
+    // (the ledger db_handlers discipline - set_config true is
     // transaction-local).
     let _ = sqlx::query("SELECT sentin8_set_tenant_context($1, '', 'm2m', 'sys:admin')")
         .bind(env_id)
@@ -174,7 +174,7 @@ async fn stress_run_is_idempotent_per_snapshot() {
 }
 
 /// Cross-schema isolation: the risk role/schema must contain NO tables
-/// derived from ledger/payments — inputs are events, never joins (§8).
+/// derived from ledger/payments - inputs are events, never joins (§8).
 #[tokio::test]
 async fn no_cross_schema_dependence() {
     let Some(pool) = test_pool().await else {

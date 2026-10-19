@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Bank8:Risk
 // SPDX-License-Identifier: Apache-2.0
 
-//! Axum server setup for Risk — shell boot composition.
+//! Axum server setup for Risk - shell boot composition.
 //! See `services/risk/DESIGN.md` §2.
 
 use crate::handlers::{self, AppState};
@@ -13,12 +13,12 @@ use std::sync::Arc;
 pub async fn build_state(core: sentin8::shell::ServiceCore) -> anyhow::Result<AppState> {
     let config = Arc::new(crate::config::RiskConfig::from_env());
 
-    // ── Sentin8:Policy (§4.2b — shell-owned boot): consume the engine the
-    // shell booted in step 8 — no second engine, consumer, or credential
+    // ── Sentin8:Policy (§4.2b - shell-owned boot): consume the engine the
+    // shell booted in step 8 - no second engine, consumer, or credential
     // registration here. Step 5 is the ONLY gate.
     let policy_engine = core.admin.policy.clone();
 
-    // ── MemBus (principles §4.7 — membus → bus → API): the newest-wins
+    // ── MemBus (principles §4.7 - membus → bus → API): the newest-wins
     // state-refresh tier. Fail-soft by contract.
     let membus = sentin8::membus::ServiceBus::connect("bank8:risk", &core.config.valkey_url).await;
 
@@ -37,9 +37,9 @@ pub async fn build_state(core: sentin8::shell::ServiceCore) -> anyhow::Result<Ap
 
     // Spawn the embedded measurement worker: consumes the `ledger` +
     // `payments` families and updates exposures/ECL/limits incrementally
-    // (the WKR-MERGE embedded-worker precedent — no separate binary).
-    // The worker's Bus client is the single outbound identity — the
-    // `risk-worker` workload certificate (CERTFREE-4V — fail-closed, no
+    // (the WKR-MERGE embedded-worker precedent - no separate binary).
+    // The worker's Bus client is the single outbound identity - the
+    // `risk-worker` workload certificate (CERTFREE-4V - fail-closed, no
     // token fallback).
     crate::worker::spawn(&state).await;
 
@@ -62,7 +62,7 @@ pub fn routes(router: axum::Router<AppState>, state: AppState) -> axum::Router<A
         .route("/v1/limits/{id}", get(handlers::get_limit))
         .route("/v1/stress/scenarios", post(handlers::create_scenario))
         .route("/v1/stress/run", post(handlers::run_stress))
-        // ── Admin UI (RFW) + policy admin (§3.6 — shared implementation) ──
+        // ── Admin UI (RFW) + policy admin (§3.6 - shared implementation) ──
         .route("/v1/admin/ui/{*page}", get(crate::admin_ui::get_admin_ui))
         .route("/v1/admin/overview", get(crate::admin_ui::admin_overview))
         .route(
@@ -110,7 +110,7 @@ pub fn routes(router: axum::Router<AppState>, state: AppState) -> axum::Router<A
         .with_state(state)
 }
 
-/// Shared policy-admin surface accessor (§3.6) — the shared handlers
+/// Shared policy-admin surface accessor (§3.6) - the shared handlers
 /// extract this service's admin state via [`HasPolicyAdmin`].
 impl sentin8::shield::admin::HasPolicyAdmin for AppState {
     fn policy_admin(&self) -> &sentin8::shield::admin::SharedAdminState {

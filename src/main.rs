@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Bank8:Risk
 // SPDX-License-Identifier: Apache-2.0
 
-//! Sentin8 Risk — prudential risk measurement: capital, liquidity,
+//! Sentin8 Risk - prudential risk measurement: capital, liquidity,
 //! credit (IFRS 9 ECL), limits, stress. See `services/risk/DESIGN.md`.
 //! Boot runs on the platform `sentin8-shell` crate: registration flag, PQ
 //! provider, config, capped pool, PG18 check, state binding, OpenAPI

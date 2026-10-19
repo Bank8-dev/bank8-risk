@@ -1,15 +1,15 @@
-# Bank8:Risk — Detailed Design Document
+# Bank8:Risk - Detailed Design Document
 
 ## 1. Scope & Context
 
-Bank8:Risk owns: the `risk` schema (schema-per-service — domain tables +
+Bank8:Risk owns: the `risk` schema (schema-per-service - domain tables +
 `risk.outbox` / `risk.audit_journal` producer tables), the risk
 measurement REST API, the event-driven measurement worker, the limit
 monitor, the IFRS 9 ECL engine, and the `bank8:risk:*` event family.
 
 It does NOT own: money movement or balances (Bank8:Ledger), payment
 state (Bank8:Payments), filing (Bank8:Reporting), tenant-authored hook
-execution (Sentin8:Func — Risk consumes the *results*), or metric
+execution (Sentin8:Func - Risk consumes the *results*), or metric
 aggregation (Sentin8:Stat).
 
 ```mermaid
@@ -44,17 +44,17 @@ measurement worker (a Bus SSE consumer on the `ledger`/`payments`
 families that updates exposures, ECL staging, and limit state
 incrementally, then emits breaches on the `risk` family).
 
-Access-decision order (principles §4.7 — **membus → bus → owner
-API**): (1) MemBus state refresh first — measured limit/exposure state
+Access-decision order (principles §4.7 - **membus → bus → owner
+API**): (1) MemBus state refresh first - measured limit/exposure state
 publishes newest-wins ephemeral notifications (`sentin8::membus::ServiceBus`,
 fail-soft) so risk dashboards refresh surgically; (2) durable, audited
 `bank8:risk:limit:breached` / `stress:completed` events via the local
-outbox → relay → Bus `POST /v1/produce` — trigger delivery to
+outbox → relay → Bus `POST /v1/produce` - trigger delivery to
 Compliance/Reporting rides this tier; (3) owner HTTP APIs only for
 on-demand full recomputes (filing inputs, stress runs) that need a
 synchronous aggregate. The measurement inputs themselves are Bus
 events (`posting:created`, `instruction:completed`) carrying the full
-domain snapshot — never cross-service table reads.
+domain snapshot - never cross-service table reads.
 
 ```mermaid
 graph TD
@@ -142,11 +142,11 @@ All tables env-scoped + RLS-enforced (`FORCE ROW LEVEL SECURITY`,
 
 | Audience | Routes | Auth gate | Events emitted |
 |---|---|---|---|
-| Public | `GET /v1/exposures`, `GET /v1/limits`, `GET /v1/limits/{id}`, `POST /v1/limits` (upsert — jurisdiction floors land here as registry data), `POST /v1/stress/scenarios` (declarative authoring), `POST /v1/stress/run` | `bank8:risk:{exposures,limits,stress}:{read,write}` via Shield | `bank8:risk:limit:{breached,upserted}`, `bank8:risk:stress:{scenario:upserted,completed}` |
-| Admin/RFW | `GET /v1/admin/ui/{page}`, `GET /v1/admin/overview` | `bank8:risk:admin` | — |
+| Public | `GET /v1/exposures`, `GET /v1/limits`, `GET /v1/limits/{id}`, `POST /v1/limits` (upsert - jurisdiction floors land here as registry data), `POST /v1/stress/scenarios` (declarative authoring), `POST /v1/stress/run` | `bank8:risk:{exposures,limits,stress}:{read,write}` via Shield | `bank8:risk:limit:{breached,upserted}`, `bank8:risk:stress:{scenario:upserted,completed}` |
+| Admin/RFW | `GET /v1/admin/ui/{page}`, `GET /v1/admin/overview` | `bank8:risk:admin` | - |
 
 Scenario authoring is declarative data (assumption JSONB, idempotent per
-(env, name)) — a Func-authored hook cannot be audited as a filing input
+(env, name)) - a Func-authored hook cannot be audited as a filing input
 (DESIGN.md §10 resolved). A stress run is an on-demand full recompute,
 idempotent per (scenario, snapshot ref).
 
@@ -169,15 +169,15 @@ sequenceDiagram
 
 - **Auth**: Sentin8:Auth-issued tokens verified; Shield against live
   roles; `scope` is a pre-filter, never the decision.
-- **Identity — no token envs.** The worker's certificate-presenting Bus
-  client is the single outbound identity (CERTFREE-4V — single identity
+- **Identity - no token envs.** The worker's certificate-presenting Bus
+  client is the single outbound identity (CERTFREE-4V - single identity
   plane, principles §4.1); config carries URLs only. A failed certificate
-  mint fails the consume closed — there is no static-token fallback
+  mint fails the consume closed - there is no static-token fallback
   anywhere.
 - **Event emission (membus → bus → API)**: every measurement change
   publishes the MemBus state refresh first (fail-soft), then the durable
   outbox row; the breach/stress events trigger downstream work via Bus.
-  No cross-service table access ever — inputs are event payloads.
+  No cross-service table access ever - inputs are event payloads.
 - **Tenant + RLS**: `set_tenant_context` awaited on the same connection
   as the query; explicit `WHERE env_id = $N`.
 - **Idempotency**: incremental updates are idempotent per
@@ -208,7 +208,7 @@ filing inputs). Backpressure via Valkey consumer group ACK.
 
 ## 8. Invariants
 
-- Exposure updates are idempotent per event idempotency key — no
+- Exposure updates are idempotent per event idempotency key - no
   double-counting.
 - A limit breach is emitted at most once per (limit, direction)
   transition.
@@ -217,8 +217,8 @@ filing inputs). Backpressure via Valkey consumer group ACK.
 
 ## 9. Testing Strategy
 
-- **Contracts crate** — shared jurisdiction/limit shapes.
-- **Policy suite** (`tests/policy.rs`) — the real seeded scope-mirror
+- **Contracts crate** - shared jurisdiction/limit shapes.
+- **Policy suite** (`tests/policy.rs`) - the real seeded scope-mirror
   text with the handler-action parity matrix (11 tests).
 - **DB invariants** (`tests/db_invariants.rs`, all 5 pass against a live
   bank8 DB): FORCE-RLS rejection; exposure UPSERT convergence (one row
@@ -226,7 +226,7 @@ filing inputs). Backpressure via Valkey consumer group ACK.
   (limit); stress-run idempotency per (scenario, snapshot);
   no-cross-schema-dependence (no risk view references
   ledger/payments).
-- **E2E** — UI-only through the BFF (E2E-REG-1). No live-regulator
+- **E2E** - UI-only through the BFF (E2E-REG-1). No live-regulator
   stress certification.
 
 ## 10. Open Questions

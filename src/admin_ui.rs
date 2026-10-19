@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Bank8:Risk
 // SPDX-License-Identifier: Apache-2.0
 
-//! Bank8:Risk Admin UI handlers — RFW (Remote Flutter Widget)
+//! Bank8:Risk Admin UI handlers - RFW (Remote Flutter Widget)
 //! definitions for the risk dashboard and limits admin pages. Icons are
 //! Material Icons code points (hex strings), per principles §4.15.
 
@@ -20,7 +20,7 @@ use sqlx::Row;
 use crate::auth;
 use crate::handlers::{set_tenant_context, AppState};
 
-/// GET /v1/admin/ui/{page} — return the RFW definition for the requested
+/// GET /v1/admin/ui/{page} - return the RFW definition for the requested
 /// admin page.
 #[utoipa::path(
     get,
@@ -54,7 +54,7 @@ pub async fn get_admin_ui(
         "overview" => overview_page(),
         "limits" => limits_page(),
         "stress" => stress_page(),
-        // ── Policy Studio (design §3.7) — shared page constructors; the
+        // ── Policy Studio (design §3.7) - shared page constructors; the
         // guard guarantees `Some` (§3.7 dispatch).
         p if sentin8::rfw::policy_page("bank8:risk", p).is_some() => {
             sentin8::rfw::policy_page("bank8:risk", p)
@@ -80,7 +80,7 @@ fn overview_page() -> AdminUiPage {
             title: Some("Risk Dashboard".into()),
             subtitle: None,
             children: vec![
-                RemoteWidget::Text(WidgetText { text: "Measured exposures, capital, liquidity, and ECL stages updated incrementally from ledger and payment events — breaches emit the moment a limit is crossed.".into(), text_type: WidgetTextType::Body, align: TextAlign::Left, max_lines: None }),
+                RemoteWidget::Text(WidgetText { text: "Measured exposures, capital, liquidity, and ECL stages updated incrementally from ledger and payment events - breaches emit the moment a limit is crossed.".into(), text_type: WidgetTextType::Body, align: TextAlign::Left, max_lines: None }),
             ],
             actions: vec![],
         }))
@@ -106,14 +106,14 @@ fn stress_page() -> AdminUiPage {
             title: Some("Scenario Runs".into()),
             subtitle: None,
             children: vec![
-                RemoteWidget::Text(WidgetText { text: "Declarative assumption sets run on demand as a full recompute of the measured dimensions — never touching the incremental hot path; idempotent per (scenario, snapshot).".into(), text_type: WidgetTextType::Body, align: TextAlign::Left, max_lines: None }),
+                RemoteWidget::Text(WidgetText { text: "Declarative assumption sets run on demand as a full recompute of the measured dimensions - never touching the incremental hot path; idempotent per (scenario, snapshot).".into(), text_type: WidgetTextType::Body, align: TextAlign::Left, max_lines: None }),
             ],
             actions: vec![],
         }))
         .build()
 }
 
-/// GET /v1/admin/overview — the data endpoint behind the overview page:
+/// GET /v1/admin/overview - the data endpoint behind the overview page:
 /// limit/breach counts for the tenant env.
 #[utoipa::path(
     get,

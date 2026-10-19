@@ -1,4 +1,4 @@
-# Bank8:Risk — Business Requirements & Functionality
+# Bank8:Risk - Business Requirements & Functionality
 
 > Audience: product owners, business analysts, and anyone evaluating what
 > Bank8:Risk **does for the business**. For architecture read `README.md`;
@@ -6,13 +6,13 @@
 
 ## 1. Business Purpose
 
-- **Risk known at any moment, not just at filing time** — capital
+- **Risk known at any moment, not just at filing time** - capital
   adequacy, liquidity coverage, credit loss, and limit headroom are
   measured continuously from the bank's own posting and payment events.
-- **Breaches surface instantly** — crossing a limit is a domain event
+- **Breaches surface instantly** - crossing a limit is a domain event
   that alerts Compliance and feeds Reporting, rather than a number
   found later in a spreadsheet.
-- **Portable thresholds** — Basel/CRR3 output floors, OSFI CAR/LAR, US
+- **Portable thresholds** - Basel/CRR3 output floors, OSFI CAR/LAR, US
   Basel III are jurisdiction registry data, not hardcoded.
 
 ## 2. Business Scope (What the Service Provides)
