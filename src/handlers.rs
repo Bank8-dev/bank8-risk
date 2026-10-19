@@ -98,6 +98,67 @@ pub struct ExposureResponse {
 }
 
 /// A configured limit with its current breach state.
+
+// ── Typed action responses (OAPEC-9) ────────────────────────────────────
+
+/// Scenario-created ack.
+#[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
+pub struct ScenarioCreated {
+    /// The scenario id.
+    pub id: Uuid,
+    /// The scenario name.
+    pub name: String,
+}
+
+/// Limit-upsert ack.
+#[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
+pub struct LimitUpserted {
+    /// The limit row id.
+    pub id: Uuid,
+    /// The limit kind.
+    pub limit_type: String,
+    /// The threshold.
+    pub threshold: rust_decimal::Decimal,
+}
+
+/// Stress-run result envelope.
+#[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
+pub struct StressRunAccepted {
+    /// The persisted result row id.
+    pub result_id: String,
+    /// The scenario id.
+    pub scenario_id: Uuid,
+    /// The snapshot reference.
+    pub snapshot_ref: String,
+}
+
+/// One limit breach.
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+pub struct LimitBreach {
+    /// The breach row id.
+    pub id: Uuid,
+    /// The observed value.
+    pub actual: rust_decimal::Decimal,
+    /// When the breach fired.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub breached_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// `GET /v1/limits/{id}` payload (detail + breach history).
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+pub struct LimitDetailResponse {
+    /// The limit row id.
+    pub id: Uuid,
+    /// The limit kind.
+    pub limit_type: String,
+    /// The threshold.
+    pub threshold: rust_decimal::Decimal,
+    /// Active status.
+    pub status: String,
+    /// Breach history (most recent first).
+    pub breaches: Vec<LimitBreach>,
+}
+
 #[derive(Debug, Serialize, ToSchema)]
 pub struct LimitResponse {
     pub id: Uuid,
@@ -227,12 +288,12 @@ pub async fn list_limits(
 }
 
 /// `GET /v1/limits/{id}` - limit detail with breach history.
-#[utoipa::path(get, path = "/v1/limits/{id}", responses((status = 200, body = serde_json::Value)))]
+#[utoipa::path(get, path = "/v1/limits/{id}", responses((status = 200, body = LimitDetailResponse)))]
 pub async fn get_limit(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(id): Path<Uuid>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+) -> Result<Json<LimitDetailResponse>, (StatusCode, String)> {
     let a = auth::verify_token(&state.config, &headers).await?;
     crate::policy::require(
         &state.policy,
@@ -264,17 +325,20 @@ pub async fn get_limit(
     .fetch_all(&mut *conn)
     .await
     .map_err(crate::errors::err_db)?;
-    Ok(Json(serde_json::json!({
-        "id": limit.get::<Uuid, _>("id"),
-        "limit_type": limit.get::<String, _>("limit_type"),
-        "threshold": limit.get::<rust_decimal::Decimal, _>("threshold"),
-        "status": limit.get::<String, _>("status"),
-        "breaches": breaches.iter().map(|b| serde_json::json!({
-            "id": b.get::<Uuid, _>("id"),
-            "actual": b.get::<rust_decimal::Decimal, _>("actual"),
-            "breached_at": b.get::<chrono::DateTime<chrono::Utc>, _>("breached_at"),
-        })).collect::<Vec<_>>(),
-    })))
+    Ok(Json(LimitDetailResponse {
+        id: limit.get::<Uuid, _>("id"),
+        limit_type: limit.get::<String, _>("limit_type"),
+        threshold: limit.get::<rust_decimal::Decimal, _>("threshold"),
+        status: limit.get::<String, _>("status"),
+        breaches: breaches
+            .iter()
+            .map(|b| LimitBreach {
+                id: b.get::<Uuid, _>("id"),
+                actual: b.get::<rust_decimal::Decimal, _>("actual"),
+                breached_at: Some(b.get::<chrono::DateTime<chrono::Utc>, _>("breached_at")),
+            })
+            .collect::<Vec<_>>(),
+    }))
 }
 
 // ── Stress ────────────────────────────────────────────────────────────────
@@ -292,12 +356,12 @@ pub struct CreateScenarioRequest {
 /// `POST /v1/stress/scenarios` - author a declarative scenario
 /// (admin-scoped). Idempotent per (env, name): re-authoring a scenario
 /// updates its assumptions in place (registry data, not code).
-#[utoipa::path(post, path = "/v1/stress/scenarios", request_body = CreateScenarioRequest, responses((status = 200, body = serde_json::Value)))]
+#[utoipa::path(post, path = "/v1/stress/scenarios", request_body = CreateScenarioRequest, responses((status = 200, body = ScenarioCreated)))]
 pub async fn create_scenario(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(req): Json<CreateScenarioRequest>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+) -> Result<Json<ScenarioCreated>, (StatusCode, String)> {
     let a = auth::verify_token(&state.config, &headers).await?;
     crate::policy::require(
         &state.policy,
@@ -322,12 +386,16 @@ pub async fn create_scenario(
     .await
     .map_err(crate::errors::err_db)?;
     tx.commit().await.map_err(crate::errors::err_db)?;
-    let payload = serde_json::json!({ "id": id, "name": req.name });
+    
+    let payload = ScenarioCreated {
+        id,
+        name: req.name.clone(),
+    };
     emit_event(
         &state,
         a.env_id(),
         "bank8:risk:stress:scenario:upserted",
-        payload.clone(),
+        serde_json::to_value(&payload).unwrap_or_default(),
     )
     .await;
     Ok(Json(payload))
@@ -344,12 +412,12 @@ pub struct UpsertLimitRequest {
 /// `POST /v1/limits` - upsert a limit threshold (admin-scoped;
 /// idempotent per (env, limit_type)). The limit_type must be one of the
 /// schema's CHECK values.
-#[utoipa::path(post, path = "/v1/limits", request_body = UpsertLimitRequest, responses((status = 200, body = serde_json::Value), (status = 422)))]
+#[utoipa::path(post, path = "/v1/limits", request_body = UpsertLimitRequest, responses((status = 200, body = LimitUpserted), (status = 422)))]
 pub async fn upsert_limit(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(req): Json<UpsertLimitRequest>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+) -> Result<Json<LimitUpserted>, (StatusCode, String)> {
     let a = auth::verify_token(&state.config, &headers).await?;
     crate::policy::require(
         &state.policy,
@@ -381,13 +449,16 @@ pub async fn upsert_limit(
     .await
     .map_err(crate::errors::err_db)?;
     tx.commit().await.map_err(crate::errors::err_db)?;
-    let payload =
-        serde_json::json!({ "id": id, "limit_type": req.limit_type, "threshold": req.threshold });
+    let payload = LimitUpserted {
+        id,
+        limit_type: req.limit_type.clone(),
+        threshold: req.threshold,
+    };
     emit_event(
         &state,
         a.env_id(),
         "bank8:risk:limit:upserted",
-        payload.clone(),
+        serde_json::to_value(&payload).unwrap_or_default(),
     )
     .await;
     Ok(Json(payload))
@@ -396,12 +467,12 @@ pub async fn upsert_limit(
 /// `POST /v1/stress/run` - run a scenario's shocks against a
 /// point-in-time snapshot (on-demand full recompute; never touches the
 /// incremental hot path). Idempotent per (scenario, snapshot ref).
-#[utoipa::path(post, path = "/v1/stress/run", request_body = StressRunRequest, responses((status = 200, body = serde_json::Value)))]
+#[utoipa::path(post, path = "/v1/stress/run", request_body = StressRunRequest, responses((status = 200, body = StressRunAccepted)))]
 pub async fn run_stress(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(req): Json<StressRunRequest>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+) -> Result<Json<StressRunAccepted>, (StatusCode, String)> {
     let a = auth::verify_token(&state.config, &headers).await?;
     crate::policy::require(
         &state.policy,
@@ -449,12 +520,16 @@ pub async fn run_stress(
     .await
     .map_err(crate::errors::err_db)?;
     conn.commit().await.map_err(crate::errors::err_db)?;
-    let payload = serde_json::json!({ "result_id": row, "scenario_id": scenario_id, "snapshot_ref": snapshot_ref });
+    let payload = StressRunAccepted {
+        result_id: row.to_string(),
+        scenario_id,
+        snapshot_ref: snapshot_ref.clone(),
+    };
     emit_event(
         &state,
         a.env_id(),
         "bank8:risk:stress:completed",
-        payload.clone(),
+        serde_json::to_value(&payload).unwrap_or_default(),
     )
     .await;
     Ok(Json(payload))

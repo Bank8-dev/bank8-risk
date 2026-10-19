@@ -30,7 +30,7 @@ use crate::handlers::{set_tenant_context, AppState};
         ("target_env_id" = String, Query, description = "Target env (RLS context)")
     ),
     responses(
-        (status = 200, description = "RFW page definition", body = serde_json::Value),
+        (status = 200, description = "RFW page definition", body = sentin8::rfw::AdminUiResponse),
         (status = 403, description = "Caller lacks the admin scope"),
     ),
     security(("bank8:admin" = [])),
@@ -40,7 +40,7 @@ pub async fn get_admin_ui(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(page): Path<String>,
-) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+) -> Result<Json<AdminUiResponse>, (axum::http::StatusCode, String)> {
     let _a = auth::verify_token(&state.config, &headers).await?;
     crate::policy::require(
         &state.policy,
@@ -69,9 +69,7 @@ pub async fn get_admin_ui(
         }
     };
 
-    Ok(Json(
-        serde_json::to_value(AdminUiResponse::page(page_def)).unwrap(),
-    ))
+    Ok(Json(AdminUiResponse::page(page_def)))
 }
 
 fn overview_page() -> AdminUiPage {
@@ -115,12 +113,26 @@ fn stress_page() -> AdminUiPage {
 
 /// GET /v1/admin/overview - the data endpoint behind the overview page:
 /// limit/breach counts for the tenant env.
+
+/// Overview counters for the risk admin landing page (OAPEC-9 typed body).
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+pub struct AdminOverviewStats {
+    /// Limits currently within their threshold.
+    pub limits_ok: i64,
+    /// Limits currently breached.
+    pub limits_breached: i64,
+    /// Open exposure records.
+    pub exposures: i64,
+    /// The service identifier.
+    pub service: String,
+}
+
 #[utoipa::path(
     get,
     path = "/v1/admin/overview",
     params(("target_env_id" = String, Query, description = "Target env (RLS context)")),
     responses(
-        (status = 200, description = "limit/breach counts", body = serde_json::Value),
+        (status = 200, description = "limit/breach counts", body = AdminOverviewStats),
         (status = 403, description = "Caller lacks the admin scope"),
     ),
     security(("bank8:admin" = [])),
@@ -129,7 +141,7 @@ fn stress_page() -> AdminUiPage {
 pub async fn admin_overview(
     State(state): State<AppState>,
     headers: HeaderMap,
-) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+) -> Result<Json<AdminOverviewStats>, (axum::http::StatusCode, String)> {
     let a = auth::verify_token(&state.config, &headers).await?;
     crate::policy::require(
         &state.policy,
@@ -164,10 +176,10 @@ pub async fn admin_overview(
         .map_err(crate::errors::err_db)?
         .get::<i64, _>("n");
 
-    Ok(Json(serde_json::json!({
-        "limits_ok": limits_ok,
-        "limits_breached": limits_breached,
-        "exposures": exposures,
-        "service": "bank8:risk",
-    })))
+    Ok(Json(AdminOverviewStats {
+        limits_ok,
+        limits_breached,
+        exposures,
+        service: "bank8:risk".into(),
+    }))
 }
