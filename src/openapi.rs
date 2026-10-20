@@ -53,4 +53,5 @@ use crate::handlers;
         (name = "policy", description = "Shield policy administration (shared surface)"),
         (name = "risk", description = "Bank8:Risk - prudential risk measurement: capital, liquidity, credit (ECL), limits, stress"),
     ),
-)]pub struct RiskOpenApi;
+)]
+pub struct RiskOpenApi;

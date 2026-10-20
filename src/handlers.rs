@@ -386,7 +386,7 @@ pub async fn create_scenario(
     .await
     .map_err(crate::errors::err_db)?;
     tx.commit().await.map_err(crate::errors::err_db)?;
-    
+
     let payload = ScenarioCreated {
         id,
         name: req.name.clone(),
