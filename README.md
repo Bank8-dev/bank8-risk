@@ -1,5 +1,10 @@
 # Bank8:Risk - README
 
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](../../LICENSE)
+[![Built with Rust](https://img.shields.io/badge/Built%20with-Rust-orange.svg)](https://www.rust-lang.org/)
+[![Docs](https://img.shields.io/badge/docs/read-3aa757.svg)](https://bank8.dev/docs/products/risk)
+[![Website](https://img.shields.io/badge/website-bank8.dev-1a73e8.svg)](https://bank8.dev)
+
 Prudential risk measurement: capital (Basel), liquidity (LCR/NSFR),
 credit (IFRS 9 ECL), market, and operational risk, plus stress testing
 and limit monitoring - a continuous measurement engine that consumes
