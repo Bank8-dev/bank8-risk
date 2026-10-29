@@ -114,7 +114,7 @@ fn stress_page() -> AdminUiPage {
 /// GET /v1/admin/overview - the data endpoint behind the overview page:
 /// limit/breach counts for the tenant env.
 
-/// Overview counters for the risk admin landing page (OAPEC-9 typed body).
+/// Overview counters for the risk admin landing page (typed body).
 #[derive(Debug, serde::Serialize, utoipa::ToSchema)]
 pub struct AdminOverviewStats {
     /// Limits currently within their threshold.

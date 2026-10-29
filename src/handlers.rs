@@ -99,7 +99,7 @@ pub struct ExposureResponse {
 
 /// A configured limit with its current breach state.
 
-// ── Typed action responses (OAPEC-9) ────────────────────────────────────
+// ── Typed action responses ────────────────────────────────────
 
 /// Scenario-created ack.
 #[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
@@ -212,7 +212,7 @@ fn row_to_limit(row: &sqlx::postgres::PgRow) -> LimitResponse {
 )]
 /// `GET /v1/health` - service health payload.
 ///
-/// Carries the binary's build identity (`version`/`build`, BUILDID-1) so
+/// Carries the binary's build identity (`version`/`build`,) so
 /// captain's monitor populates `make status`'s VERSION column for every
 /// instance - the consuming BINARY's identity, never a shared crate's.
 pub async fn health(State(state): State<AppState>) -> impl IntoResponse {
