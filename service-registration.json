@@ -18,7 +18,8 @@
       "telemetry_property": {
         "slug": "risk",
         "name": "Bank8:Risk Telemetry"
-      }
+      },
+      "exposure": "internal"
     }
   ]
 }
